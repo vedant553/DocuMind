@@ -24,11 +24,15 @@
     "prisma:reset": "dotenv -e .env -- npx prisma migrate reset"
   },
   "dependencies": {
+    "@fastify/multipart": "^9.3.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-fastify": "^11.1.8",
     "@prisma/client": "^6.18.0",
+    "cloudinary": "^2.8.0",
+    "openai": "^6.8.0",
+    "pdf-parse": "^2.4.5",
     "prisma": "^6.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
@@ -42,6 +46,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/pdf-parse": "^1.1.5",
     "@types/supertest": "^6.0.2",
     "dotenv": "^17.2.3",
     "dotenv-cli": "^7.4.2",
