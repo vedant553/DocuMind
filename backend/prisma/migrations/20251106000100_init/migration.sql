@@ -1,3 +1,6 @@
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "vector";
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
@@ -41,7 +44,7 @@ CREATE TABLE "Document" (
 CREATE TABLE "DocumentChunk" (
     "id" SERIAL NOT NULL,
     "content" TEXT NOT NULL,
-    "embedding" TEXT,
+    "embedding" vector(1536),
     "chunkIndex" INTEGER NOT NULL,
     "documentId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

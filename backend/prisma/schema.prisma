@@ -1,26 +1,24 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")       // Pooled connection
-  directUrl = env("DIRECT_DATABASE_URL") // Direct connection
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
-// User model
 model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   name      String?
-  password  String    // Will hash this later
+  password  String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  
-  projects  Project[] // One user has many projects
+  projects  Project[]
 }
 
-// Project model (user workspace)
 model Project {
   id          Int        @id @default(autoincrement())
   name        String
@@ -28,37 +26,32 @@ model Project {
   userId      Int
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  
+  documents   Document[]
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents   Document[] // One project has many documents
 }
 
-// Document model (uploaded files)
 model Document {
-  id        Int       @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   name      String
-  fileUrl   String    // Cloudinary URL
-  fileType  String    // pdf, txt, md
-  fileSize  Int       // in bytes
-  status    String    @default("processing") // processing, completed, failed
+  fileUrl   String
+  fileType  String
+  fileSize  Int
+  status    String          @default("processing")
   projectId Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  
-  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  chunks    DocumentChunk[] // One document has many chunks
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  chunks    DocumentChunk[]
 }
 
-// DocumentChunk model (for RAG)
 model DocumentChunk {
-  id         Int      @id @default(autoincrement())
-  content    String   @db.Text // The actual text chunk
-  embedding  String?  // We'll store as JSON string for now, optimize later
-  chunkIndex Int      // Order of chunks in document
+  id         Int                    @id @default(autoincrement())
+  content    String
+  embedding  Unsupported("vector")?
+  chunkIndex Int
   documentId Int
-  createdAt  DateTime @default(now())
-  
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
-  @@index([documentId]) // Speed up queries by documentId
+  createdAt  DateTime               @default(now())
+  document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }

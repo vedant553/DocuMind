@@ -21,7 +21,9 @@
     "prisma:generate": "dotenv -e .env -- npx prisma generate",
     "prisma:migrate": "dotenv -e .env -- npx prisma migrate dev",
     "prisma:studio": "dotenv -e .env -- npx prisma studio",
-    "prisma:reset": "dotenv -e .env -- npx prisma migrate reset"
+    "prisma:reset": "dotenv -e .env -- npx prisma migrate reset",
+    "prisma": "prisma",
+    "seed": "dotenv -e ./.env -- ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^9.3.0",

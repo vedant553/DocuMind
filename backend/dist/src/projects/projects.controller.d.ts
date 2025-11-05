@@ -7,19 +7,19 @@ export declare class ProjectsController {
         description: string;
         userId: number;
     }): Promise<{
-        id: number;
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         description: string | null;
         userId: number;
     }>;
     getProjects(userId: string): Promise<({
         documents: {
-            id: number;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            id: number;
             fileUrl: string;
             fileType: string;
             fileSize: number;
@@ -27,10 +27,10 @@ export declare class ProjectsController {
             projectId: number;
         }[];
     } & {
-        id: number;
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         description: string | null;
         userId: number;
     })[]>;
