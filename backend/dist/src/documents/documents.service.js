@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocumentsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const embeddings_service_1 = require("../embeddings/embeddings.service");
 const cloudinary_config_1 = __importDefault(require("../config/cloudinary.config"));
 const file_upload_exception_1 = require("../common/exceptions/file-upload.exception");
 function isPdfParseFunction(val) {
@@ -38,11 +39,13 @@ async function loadPdfParse() {
 }
 let DocumentsService = DocumentsService_1 = class DocumentsService {
     prisma;
+    embeddingsService;
     logger = new common_1.Logger(DocumentsService_1.name);
     ALLOWED_FILE_TYPES = ['pdf', 'txt', 'md'];
     MAX_FILE_SIZE = 10 * 1024 * 1024;
-    constructor(prisma) {
+    constructor(prisma, embeddingsService) {
         this.prisma = prisma;
+        this.embeddingsService = embeddingsService;
     }
     async uploadDocument(file, filename, projectId) {
         try {
@@ -134,12 +137,16 @@ let DocumentsService = DocumentsService_1 = class DocumentsService {
                 throw new Error('No text could be extracted from the document');
             }
             const chunks = this.chunkText(extractedText);
-            const data = chunks.map((content, index) => ({
-                content,
-                chunkIndex: index,
-                documentId,
-            }));
-            await this.prisma.documentChunk.createMany({ data });
+            this.logger.log(`Generating embeddings for ${chunks.length} chunks...`);
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                const embedding = await this.embeddingsService.createEmbedding(chunk);
+                const vector = `[${embedding.join(',')}]`;
+                await this.prisma.$executeRaw `
+          INSERT INTO "DocumentChunk" (content, "chunkIndex", "documentId", embedding, "createdAt")
+          VALUES (${chunk}, ${i}, ${documentId}, ${vector}::vector, NOW())
+        `;
+            }
             await this.prisma.document.update({
                 where: { id: documentId },
                 data: { status: 'completed' },
@@ -211,6 +218,7 @@ let DocumentsService = DocumentsService_1 = class DocumentsService {
 exports.DocumentsService = DocumentsService;
 exports.DocumentsService = DocumentsService = DocumentsService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        embeddings_service_1.EmbeddingsService])
 ], DocumentsService);
 //# sourceMappingURL=documents.service.js.map

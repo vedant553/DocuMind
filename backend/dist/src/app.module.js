@@ -14,6 +14,7 @@ const prisma_module_1 = require("./prisma/prisma.module");
 const users_module_1 = require("./users/users.module");
 const projects_module_1 = require("./projects/projects.module");
 const documents_module_1 = require("./documents/documents.module");
+const embeddings_module_1 = require("./embeddings/embeddings.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -24,6 +25,7 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             projects_module_1.ProjectsModule,
             documents_module_1.DocumentsModule,
+            embeddings_module_1.EmbeddingsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

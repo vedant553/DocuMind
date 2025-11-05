@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmbeddingsService } from '../embeddings/embeddings.service';
 import cloudinary from '../config/cloudinary.config';
 import {
   FileUploadException,
@@ -46,7 +47,10 @@ export class DocumentsService {
   private readonly ALLOWED_FILE_TYPES = ['pdf', 'txt', 'md'];
   private readonly MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly embeddingsService: EmbeddingsService,
+  ) {}
 
   /**
    * Upload document to Cloudinary and save metadata to database.
@@ -200,14 +204,21 @@ export class DocumentsService {
         throw new Error('No text could be extracted from the document');
       }
 
-      // Chunk and persist
+      // Chunk the text
       const chunks = this.chunkText(extractedText);
-      const data = chunks.map((content, index) => ({
-        content,
-        chunkIndex: index,
-        documentId,
-      }));
-      await this.prisma.documentChunk.createMany({ data });
+      this.logger.log(`Generating embeddings for ${chunks.length} chunks...`);
+
+      // Process chunks one by one to generate and store embeddings
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const embedding = await this.embeddingsService.createEmbedding(chunk);
+        const vector = `[${embedding.join(',')}]`;
+
+        await this.prisma.$executeRaw`
+          INSERT INTO "DocumentChunk" (content, "chunkIndex", "documentId", embedding, "createdAt")
+          VALUES (${chunk}, ${i}, ${documentId}, ${vector}::vector, NOW())
+        `;
+      }
 
       await this.prisma.document.update({
         where: { id: documentId },
