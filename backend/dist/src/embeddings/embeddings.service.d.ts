@@ -1,6 +1,5 @@
 export declare class EmbeddingsService {
     private readonly logger;
-    private openai;
-    constructor();
+    private readonly DIM;
     createEmbedding(text: string): Promise<number[]>;
 }
