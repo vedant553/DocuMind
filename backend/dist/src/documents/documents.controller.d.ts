@@ -9,10 +9,10 @@ export declare class DocumentsController {
             chunks: number;
         };
     } & {
-        id: number;
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         fileUrl: string;
         fileType: string;
         fileSize: number;
@@ -24,10 +24,10 @@ export declare class DocumentsController {
             chunks: number;
         };
     } & {
-        id: number;
         name: string;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         fileUrl: string;
         fileType: string;
         fileSize: number;
