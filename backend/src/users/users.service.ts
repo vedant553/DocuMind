@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class UsersService {
-  // Get all users
+  constructor(private readonly prisma: PrismaService) {}
+
   async findAll() {
-    return await prisma.user.findMany({
+    return await this.prisma.user.findMany({
       select: {
         id: true,
         email: true,
@@ -17,10 +16,9 @@ export class UsersService {
     });
   }
 
-  // Create a new user
   async create(email: string, name: string, password: string) {
-    return await prisma.user.create({
-      data: { email, name, password }, // We'll hash password later
+    return await this.prisma.user.create({
+      data: { email, name, password },
     });
   }
 }

@@ -10,3 +10,35 @@ Content-Type: application/json
   "name": "Test User",
   "password": "password123"
 }
+
+
+
+
+
+### 1. Create user
+POST http://localhost:3001/users
+Content-Type: application/json
+
+{
+  "email": "test@documind.com",
+  "name": "Test User",
+  "password": "password123"
+}
+
+### 2. Create project (use userId from step 1)
+POST http://localhost:3001/projects
+Content-Type: application/json
+
+{
+  "name": "My First Project",
+  "description": "Testing DocuMind",
+  "userId": 1
+}
+
+### 3. Upload a document (use projectId from step 2)
+### Use Postman or Thunder Client for file uploads
+### Endpoint: POST http://localhost:3001/documents/upload/1
+### Body: form-data, key="file", select a .pdf or .txt file
+
+### 4. Check documents for project
+GET http://localhost:3001/documents/project/1
