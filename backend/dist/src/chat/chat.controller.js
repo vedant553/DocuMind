@@ -33,6 +33,26 @@ let ChatController = class ChatController {
         }
         return await this.chatService.query(body.projectId, body.question);
     }
+    async queryStream(body, reply) {
+        if (!body.projectId || !body.question) {
+            throw new common_1.BadRequestException('projectId and question are required fields');
+        }
+        reply.raw.setHeader('Content-Type', 'text/event-stream');
+        reply.raw.setHeader('Cache-Control', 'no-cache');
+        reply.raw.setHeader('Connection', 'keep-alive');
+        try {
+            for await (const chunk of this.chatService.queryStream(body.projectId, body.question)) {
+                reply.raw.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+            }
+            reply.raw.write('data: [DONE]\n\n');
+            reply.raw.end();
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            reply.raw.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+            reply.raw.end();
+        }
+    }
 };
 exports.ChatController = ChatController;
 __decorate([
@@ -43,6 +63,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "query", null);
+__decorate([
+    (0, common_1.Post)('query-stream'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "queryStream", null);
 exports.ChatController = ChatController = __decorate([
     (0, common_1.Controller)('chat'),
     __metadata("design:paramtypes", [chat_service_1.ChatService])

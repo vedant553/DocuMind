@@ -1,5 +1,6 @@
 export declare class EmbeddingsService {
     private readonly logger;
-    private readonly DIM;
+    private genAI;
+    constructor();
     createEmbedding(text: string): Promise<number[]>;
 }

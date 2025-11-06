@@ -47,7 +47,7 @@ model Document {
 model DocumentChunk {
   id         Int                    @id @default(autoincrement())
   content    String
-  embedding  Unsupported("vector")?
+  embedding  Unsupported("vector(768)")?
   chunkIndex Int
   documentId Int
   createdAt  DateTime               @default(now())

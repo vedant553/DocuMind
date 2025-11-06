@@ -1,3 +1,4 @@
+import type { FastifyReply } from 'fastify';
 import { ChatService } from './chat.service';
 interface ChatRequestBody {
     projectId: number;
@@ -14,10 +15,11 @@ export declare class ChatController {
             similarity: number;
         }[];
         sources: {
-            name: string;
             id: number;
+            name: string;
             fileUrl: string;
         }[];
     }>;
+    queryStream(body: ChatRequestBody, reply: FastifyReply): Promise<void>;
 }
 export {};

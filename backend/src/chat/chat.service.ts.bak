@@ -1,0 +1,225 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { EmbeddingsService } from '../embeddings/embeddings.service';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+@Injectable()
+export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+  private genAI: GoogleGenerativeAI;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly embeddingsService: EmbeddingsService,
+  ) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not set');
+    }
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+
+  /**
+   * RAG query with streaming: Retrieval → Augmentation → Generation (streaming)
+   */
+  async *queryStream(projectId: number, question: string): AsyncGenerator<string> {
+    this.logger.log(`RAG streaming query for project ${projectId}: "${question}"`);
+
+    // Verify project exists
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project ${projectId} not found`);
+    }
+
+    // Step 1: Create embedding for the question
+    const questionEmbedding = await this.embeddingsService.createEmbedding(question);
+    const vector = `[${questionEmbedding.join(',')}]`;
+
+    // Step 2: Similarity search (cosine distance with 768-dim vectors)
+    const similarChunks = await this.prisma.$queryRaw<
+      Array<{ id: number; content: string; similarity: number; document_id: number }>
+    >`
+      SELECT
+        id,
+        content,
+        "documentId" as document_id,
+        1 - (embedding <=> ${vector}::vector) as similarity
+      FROM "DocumentChunk"
+      WHERE "documentId" IN (
+        SELECT id FROM "Document"
+        WHERE "projectId" = ${projectId}
+        AND status = 'completed'
+      )
+      ORDER BY similarity DESC
+      LIMIT 5;
+    `;
+
+    if (similarChunks.length === 0) {
+      yield 'No documents have been processed yet. Please upload and process documents first.';
+      return;
+    }
+
+    this.logger.log(
+      `Found ${similarChunks.length} chunks, avg similarity: ${
+        similarChunks.reduce((sum, c) => sum + c.similarity, 0) / similarChunks.length
+      }`,
+    );
+
+    // Step 3: Build context
+    const context = similarChunks.map((chunk) => chunk.content).join('\n\n---\n\n');
+
+    // Step 4: Build RAG prompt
+    const prompt = this.buildRAGPrompt(context, question);
+
+    // Step 5: Stream LLM response
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContentStream(prompt);
+
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      yield text;
+    }
+  }
+
+  /**
+   * Non-streaming version (for backward compatibility with existing frontend)
+   */
+  async query(projectId: number, question: string) {
+    this.logger.log(`RAG query for project ${projectId}: "${question}"`);
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project ${projectId} not found`);
+    }
+
+    const questionEmbedding = await this.embeddingsService.createEmbedding(question);
+    const vector = `[${questionEmbedding.join(',')}]`;
+
+    const similarChunks = await this.prisma.$queryRaw<
+      Array<{ id: number; content: string; similarity: number; document_id: number }>
+    >`
+      SELECT
+        id,
+        content,
+        "documentId" as document_id,
+        1 - (embedding <=> ${vector}::vector) as similarity
+      FROM "DocumentChunk"
+      WHERE "documentId" IN (
+        SELECT id FROM "Document"
+        WHERE "projectId" = ${projectId}
+        AND status = 'completed'
+      )
+      ORDER BY similarity DESC
+      LIMIT 5;
+    `;
+
+    if (similarChunks.length === 0) {
+      return {
+        answer: 'No documents have been processed yet. Please upload and process documents first.',
+        chunks: [],
+        sources: [],
+      };
+    }
+
+    const context = similarChunks.map((chunk) => chunk.content).join('\n\n---\n\n');
+    const documentIds = [...new Set(similarChunks.map((c) => c.document_id))];
+    const sources = await this.prisma.document.findMany({
+      where: { id: { in: documentIds } },
+      select: { id: true, name: true, fileUrl: true },
+    });
+
+    const prompt = this.buildRAGPrompt(context, question);
+    
+    // Generate complete response (non-streaming)
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(prompt);
+    const answer = result.response.text();
+
+    return {
+      answer,
+      chunks: similarChunks.map((c) => ({
+        id: c.id,
+        content: c.content,
+        similarity: c.similarity,
+      })),
+      sources,
+    };
+  }
+
+  private buildRAGPrompt(context: string, question: string): string {
+    return `You are a helpful AI assistant for the DocuMind document analysis platform.
+
+Your task is to answer the user's question based ONLY on the context provided below.
+
+STRICT RULES:
+1. If the answer is not in the context, respond with: "I cannot find that information in the uploaded documents."
+2. Do not use any external knowledge or assumptions.
+3. Quote relevant parts of the context when possible.
+4. Be concise but complete in your answers.
+
+CONTEXT:
+"""
+${context}
+"""
+
+USER QUESTION:
+"""
+${question}
+"""
+
+ANSWER:`;
+  }
+}
+    // Get unique document sources
+    const documentIds = [...new Set(similarChunks.map((c) => c.document_id))];
+    const sources = await this.prisma.document.findMany({
+      where: { id: { in: documentIds } },
+      select: { id: true, name: true, fileUrl: true },
+    });
+
+    // Step 4: Build RAG prompt (constrains LLM to use only provided context)
+    const prompt = this.buildRAGPrompt(context, question);
+
+    return {
+      answer: prompt,
+      chunks: similarChunks.map((c) => ({
+        id: c.id,
+        content: c.content,
+        similarity: c.similarity,
+      })),
+      sources,
+    };
+  }
+  /**
+   * Constructs a prompt that forces the LLM to answer only from context.
+   * This is the key to preventing hallucinations in RAG systems.
+   */
+  private buildRAGPrompt(context: string, question: string): string {
+    return `You are a helpful AI assistant for the DocuMind document analysis platform.
+
+Your task is to answer the user's question based ONLY on the context provided below.
+
+STRICT RULES:
+1. If the answer is not in the context, respond with: "I cannot find that information in the uploaded documents."
+2. Do not use any external knowledge or assumptions.
+3. Quote relevant parts of the context when possible.
+4. Be concise but complete in your answers.
+
+CONTEXT:
+"""
+${context}
+"""
+
+USER QUESTION:
+"""
+${question}
+"""
+
+ANSWER:`;
+  }
+}
