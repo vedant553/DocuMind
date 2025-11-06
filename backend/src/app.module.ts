@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { DocumentsModule } from './documents/documents.module';
 import { EmbeddingsModule } from './embeddings/embeddings.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { EmbeddingsModule } from './embeddings/embeddings.module';
     ProjectsModule,
     DocumentsModule,
     EmbeddingsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

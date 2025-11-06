@@ -15,6 +15,7 @@ const users_module_1 = require("./users/users.module");
 const projects_module_1 = require("./projects/projects.module");
 const documents_module_1 = require("./documents/documents.module");
 const embeddings_module_1 = require("./embeddings/embeddings.module");
+const chat_module_1 = require("./chat/chat.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +27,7 @@ exports.AppModule = AppModule = __decorate([
             projects_module_1.ProjectsModule,
             documents_module_1.DocumentsModule,
             embeddings_module_1.EmbeddingsModule,
+            chat_module_1.ChatModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
